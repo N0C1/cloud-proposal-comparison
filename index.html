@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Proposal Comparison Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px dashed #ddd;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #3498db;
+            background: #f0f7ff;
+        }
+
+        .file-input {
+            margin: 10px;
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .comparison-container {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .proposal-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+        }
+
+        .proposal-header {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .proposal-header.google {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+        }
+
+        .proposal-header.aws {
+            background: linear-gradient(135deg, #ff9900, #ec7211);
+        }
+
+        .summary-section {
+            margin-bottom: 25px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 150px;
+        }
+
+        .summary-value {
+            color: #34495e;
+            text-align: right;
+            flex: 1;
+        }
+
+        .cost-highlight {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .cost-highlight.higher {
+            color: #e74c3c;
+        }
+
+        .bom-section {
+            margin-top: 25px;
+        }
+
+        .bom-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        .bom-table th,
+        .bom-table td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        .bom-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .bom-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .difference-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .difference-indicator.same {
+            background: #95a5a6;
+        }
+
+        .difference-indicator.different {
+            background: #e74c3c;
+        }
+
+        .download-section {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: #3498db;
+            color: white;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cloud Proposal Comparison Tool</h1>
+            <p>Compare multiple cloud migration proposals side by side</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h3>Upload Excel Files to Compare</h3>
+                <p>Select two or more cloud proposal Excel files with Summary and Bill of Materials sheets</p>
+                <br>
+                <input type="file" id="fileInput" class="file-input" multiple accept=".xlsx,.xls" />
+                <br>
+                <button onclick="processFiles()" class="upload-btn">Compare Proposals</button>
+            </div>
+
+            <div id="comparisonResults" class="comparison-container">
+                <!-- Comparison results will be inserted here -->
+            </div>
+
+            <div class="download-section" id="downloadSection" style="display: none;">
+                <h3>Export Comparison</h3>
+                <p>Download a comprehensive comparison Excel file</p>
+                <br>
+                <button onclick="downloadComparison()" class="download-btn">Download Comparison Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let proposalData = [];
+
+        async function processFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+
+            if (files.length < 2) {
+                alert('Please select at least 2 files to compare');
+                return;
+            }
+
+            proposalData = [];
+            
+            for (let file of files) {
+                try {
+                    const data = await readExcelFile(file);
+                    proposalData.push({
+                        filename: file.name,
+                        data: data
+                    });
+                } catch (error) {
+                    console.error('Error reading file:', file.name, error);
+                    alert(`Error reading file: ${file.name}`);
+                    return;
+                }
+            }
+
+            displayComparison();
+            document.getElementById('downloadSection').style.display = 'block';
+        }
+
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const workbook = XLSX.read(e.target.result, {type: 'binary'});
+                        
+                        // Parse Summary sheet
+                        const summarySheet = workbook.Sheets['Summary'];
+                        const summaryData = XLSX.utils.sheet_to_json(summarySheet, {header: 1, defval: ""});
+                        
+                        // Parse Bill of Materials sheet
+                        const bomSheet = workbook.Sheets['Bill of Materials'];
+                        const bomData = XLSX.utils.sheet_to_json(bomSheet, {header: 1, defval: ""});
+                        
+                        resolve({
+                            summary: summaryData,
+                            bom: bomData
+                        });
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsBinaryString(file);
+            });
+        }
+
+        function parseSummaryData(summaryData) {
+            const summary = {};
+            
+            for (let i = 0; i < summaryData.length; i++) {
+                const row = summaryData[i];
+                if (row[0] && row[1] && row[0] !== 'General' && row[0] !== 'Cloud Costs (in $)' && row[0] !== 'Other') {
+                    summary[row[0]] = row[1];
+                }
+            }
+            
+            return summary;
+        }
+
+        function displayComparison() {
+            const container = document.getElementById('comparisonResults');
+            container.style.display = 'grid';
+            container.innerHTML = '';
+
+            proposalData.forEach((proposal, index) => {
+                const summary = parseSummaryData(proposal.data.summary);
+                const card = createProposalCard(proposal.filename, summary, proposal.data.bom, index);
+                container.appendChild(card);
+            });
+        }
+
+        function createProposalCard(filename, summary, bomData, index) {
+            const card = document.createElement('div');
+            card.className = 'proposal-card';
+
+            const provider = summary['Provider'] || 'Unknown';
+            const headerClass = provider.toLowerCase().includes('google') ? 'google' : 
+                               provider.toLowerCase().includes('aws') ? 'aws' : '';
+
+            const monthlyPayment = parseFloat(summary['Monthly payment'] || 0);
+            const avgPerMonth = parseFloat(summary['Avg per month'] || 0);
+            
+            // Determine if this is the lowest cost option
+            const allMonthlyCosts = proposalData.map(p => {
+                const s = parseSummaryData(p.data.summary);
+                return parseFloat(s['Monthly payment'] || 0);
+            });
+            const isLowestCost = monthlyPayment === Math.min(...allMonthlyCosts) && allMonthlyCosts.filter(c => c === monthlyPayment).length === 1;
+
+            card.innerHTML = `
+                <div class="proposal-header ${headerClass}">
+                    <h3>${filename}</h3>
+                    <p>${provider}</p>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab(${index}, 'summary')">Summary</button>
+                    <button class="tab" onclick="showTab(${index}, 'bom')">Bill of Materials</button>
+                </div>
+
+                <div id="summary-${index}" class="tab-content active">
+                    <div class="summary-section">
+                        <div class="summary-item">
+                            <span class="summary-label">Provider:</span>
+                            <span class="summary-value">${summary['Provider'] || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Location:</span>
+                            <span class="summary-value">${summary['Location'] || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Service Type:</span>
+                            <span class="summary-value">${summary['Service Type'] || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Migration Action:</span>
+                            <span class="summary-value">${summary['Migration Action'] || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Monthly Payment:</span>
+                            <span class="summary-value cost-highlight ${isLowestCost ? '' : 'higher'}">
+                                $${monthlyPayment.toLocaleString()} ${isLowestCost ? '(Best Price)' : ''}
+                            </span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Cloudification:</span>
+                            <span class="summary-value">${summary['Cloudification in %'] || 'N/A'}%</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Certifications:</span>
+                            <span class="summary-value">${(summary['Certifications'] || 'None').substring(0, 100)}${(summary['Certifications'] || '').length > 100 ? '...' : ''}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bom-${index}" class="tab-content">
+                    <div class="bom-section">
+                        ${createBOMTable(bomData)}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function createBOMTable(bomData) {
+            if (!bomData || bomData.length < 2) return '<p>No Bill of Materials data available</p>';
+
+            const headers = bomData[0];
+            const rows = bomData.slice(1);
+
+            let table = '<table class="bom-table"><thead><tr>';
+            
+            // Key columns to display
+            const keyColumns = ['Asset Name', 'Type', 'Provider', 'Product Name', 'Monthly Cost (USD)', 'Service Type'];
+            const columnIndices = [];
+
+            keyColumns.forEach(col => {
+                const index = headers.indexOf(col);
+                if (index !== -1) {
+                    columnIndices.push(index);
+                    table += `<th>${col}</th>`;
+                }
+            });
+
+            table += '</tr></thead><tbody>';
+
+            rows.forEach(row => {
+                if (row.some(cell => cell !== "")) {
+                    table += '<tr>';
+                    columnIndices.forEach(index => {
+                        const value = row[index] || '';
+                        table += `<td>${value}</td>`;
+                    });
+                    table += '</tr>';
+                }
+            });
+
+            table += '</tbody></table>';
+            return table;
+        }
+
+        function showTab(proposalIndex, tabName) {
+            // Hide all tab contents for this proposal
+            document.getElementById(`summary-${proposalIndex}`).classList.remove('active');
+            document.getElementById(`bom-${proposalIndex}`).classList.remove('active');
+
+            // Show selected tab content
+            document.getElementById(`${tabName}-${proposalIndex}`).classList.add('active');
+
+            // Update tab buttons
+            const tabs = document.querySelectorAll(`#comparisonResults .proposal-card:nth-child(${proposalIndex + 1}) .tab`);
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabs[tabName === 'summary' ? 0 : 1].classList.add('active');
+        }
+
+        function downloadComparison() {
+            try {
+                // Check if XLSX is available
+                if (typeof XLSX === 'undefined') {
+                    alert('Excel library not loaded. Please refresh the page and try again.');
+                    return;
+                }
+
+                console.log('Starting download process...');
+                const wb = XLSX.utils.book_new();
+
+                // Create summary comparison sheet
+                const summaryComparison = [];
+                summaryComparison.push(['Metric', ...proposalData.map(p => p.filename)]);
+
+                const allSummaries = proposalData.map(p => parseSummaryData(p.data.summary));
+                const allKeys = [...new Set(allSummaries.flatMap(s => Object.keys(s)))];
+
+                allKeys.forEach(key => {
+                    const row = [key];
+                    allSummaries.forEach(summary => {
+                        let value = summary[key] || 'N/A';
+                        // Ensure values are strings or numbers
+                        if (typeof value === 'object') {
+                            value = String(value);
+                        }
+                        row.push(value);
+                    });
+                    summaryComparison.push(row);
+                });
+
+                const summaryWS = XLSX.utils.aoa_to_sheet(summaryComparison);
+                XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary Comparison');
+
+                // Create detailed BOM comparison
+                proposalData.forEach((proposal, index) => {
+                    try {
+                        // Clean the BOM data to ensure it's valid
+                        const cleanBOM = proposal.data.bom.map(row => 
+                            row.map(cell => {
+                                if (cell === null || cell === undefined) return '';
+                                if (typeof cell === 'object') return String(cell);
+                                return cell;
+                            })
+                        );
+                        
+                        const ws = XLSX.utils.aoa_to_sheet(cleanBOM);
+                        // Create unique sheet name with index to avoid duplicates
+                        const baseSheetName = `BOM_${(index + 1)}_${proposal.filename.replace(/[^\w]/g, '_').substring(0, 20)}`;
+                        XLSX.utils.book_append_sheet(wb, ws, baseSheetName);
+                    } catch (bomError) {
+                        console.warn(`Error processing BOM for ${proposal.filename}:`, bomError);
+                    }
+                });
+
+                // Create cost analysis sheet
+                const costAnalysis = [
+                    ['Proposal', 'Provider', 'Monthly Cost ($)', 'Annual Cost ($)', 'Cost Difference from Lowest ($)']
+                ];
+
+                const allMonthlyCosts = proposalData.map(p => {
+                    const s = parseSummaryData(p.data.summary);
+                    return parseFloat(s['Monthly payment'] || 0);
+                });
+                const lowestMonthlyCost = Math.min(...allMonthlyCosts.filter(cost => cost > 0));
+
+                proposalData.forEach(proposal => {
+                    const summary = parseSummaryData(proposal.data.summary);
+                    const monthlyCost = parseFloat(summary['Monthly payment'] || 0);
+                    const annualCost = monthlyCost * 12;
+                    const costDifference = monthlyCost - lowestMonthlyCost;
+                    
+                    costAnalysis.push([
+                        proposal.filename,
+                        summary['Provider'] || 'Unknown',
+                        monthlyCost,
+                        annualCost,
+                        costDifference
+                    ]);
+                });
+
+                const costWS = XLSX.utils.aoa_to_sheet(costAnalysis);
+                XLSX.utils.book_append_sheet(wb, costWS, 'Cost Analysis');
+
+                // Multiple download attempts
+                const filename = `Cloud_Proposal_Comparison_${new Date().toISOString().split('T')[0]}.xlsx`;
+                
+                console.log('Attempting download...');
+                
+                // Method 1: Try XLSX writeFile (most reliable)
+                try {
+                    console.log('Trying XLSX.writeFile...');
+                    XLSX.writeFile(wb, filename, { compression: true });
+                    console.log('XLSX.writeFile executed');
+                    
+                    // Check if download actually happened by waiting and checking
+                    setTimeout(() => {
+                        const userConfirm = confirm('Did the Excel file download to your computer?\n\nClick OK if yes, Cancel if no (to try alternative methods)');
+                        if (!userConfirm) {
+                            downloadAlternative(wb, filename);
+                        }
+                    }, 2000);
+                    
+                    return;
+                } catch (xlsxError) {
+                    console.error('XLSX.writeFile failed:', xlsxError);
+                }
+                
+                // If we get here, the standard method failed
+                downloadAlternative(wb, filename);
+
+            } catch (error) {
+                console.error('Error generating Excel file:', error);
+                alert(`Error generating Excel file: ${error.message}\n\nTrying CSV export instead...`);
+                downloadCSV();
+            }
+        }
+
+        function downloadAlternative(wb, filename) {
+            console.log('Trying alternative download methods...');
+            
+            // Method 2: Manual blob download
+            try {
+                console.log('Creating blob...');
+                const wbout = XLSX.write(wb, { 
+                    bookType: 'xlsx', 
+                    type: 'array',
+                    compression: true 
+                });
+                
+                const blob = new Blob([wbout], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+                
+                console.log('Blob created, size:', blob.size);
+                
+                // Check if browser supports downloads
+                if (window.navigator.msSaveOrOpenBlob) {
+                    // IE/Edge
+                    window.navigator.msSaveOrOpenBlob(blob, filename);
+                    alert('Download started for Internet Explorer/Edge!');
+                    return;
+                }
+                
+                // Modern browsers
+                const url = window.URL.createObjectURL(blob);
+                console.log('Blob URL created:', url);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                
+                // Add to DOM, click, and remove
+                document.body.appendChild(a);
+                console.log('Clicking download link...');
+                a.click();
+                
+                // Clean up after a delay
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    console.log('Cleanup completed');
+                }, 1000);
+                
+                alert(`Download should start now!\n\nFile: ${filename}\nSize: ${Math.round(blob.size/1024)}KB\n\nCheck your Downloads folder.`);
+                
+            } catch (blobError) {
+                console.error('Blob download failed:', blobError);
+                alert('Excel download failed. Trying CSV export...');
+                downloadCSV();
+            }
+        }
+
+        function downloadCSV() {
+            try {
+                console.log('Generating CSV export...');
+                
+                // Create summary CSV
+                const summaryComparison = [];
+                summaryComparison.push(['Metric', ...proposalData.map(p => p.filename)]);
+
+                const allSummaries = proposalData.map(p => parseSummaryData(p.data.summary));
+                const allKeys = [...new Set(allSummaries.flatMap(s => Object.keys(s)))];
+
+                allKeys.forEach(key => {
+                    const row = [key];
+                    allSummaries.forEach(summary => {
+                        let value = summary[key] || 'N/A';
+                        if (typeof value === 'object') {
+                            value = String(value);
+                        }
+                        row.push(value);
+                    });
+                    summaryComparison.push(row);
+                });
+
+                // Convert to CSV string
+                const csvContent = summaryComparison.map(row => 
+                    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+                ).join('\n');
+
+                // Download CSV
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const filename = `Cloud_Proposal_Comparison_${new Date().toISOString().split('T')[0]}.csv`;
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                alert(`CSV file downloaded: ${filename}\n\nYou can open this in Excel or any spreadsheet program.`);
+                
+            } catch (csvError) {
+                console.error('CSV download failed:', csvError);
+                alert('All download methods failed. Please try:\n1. Refreshing the page\n2. Using a different browser\n3. Checking browser permissions\n4. Disabling adblockers temporarily');
+            }
+        }
+    </script>
+</body>
+</html>
